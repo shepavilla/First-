@@ -500,9 +500,14 @@ function fitDates(){app.querySelectorAll(".cc .cn").forEach(function(e){e.style.
   if(e.scrollWidth>e.clientWidth+0.5){var f=parseFloat(getComputedStyle(e).fontSize);e.style.fontSize=Math.max(9,Math.floor(f*e.clientWidth/e.scrollWidth*10)/10)+"px";}});}
 window.addEventListener("resize",function(){fitDates();});
 /* Etiqueta de reserva al final del plan: "… · Reserva obligatoria: nota" */
-function actHtml(a){var m=/\s·\s(Reserva obligatoria|Reserva recomendada|Sin reserva)(?::\s*(.*))?$/.exec(a);
+/* Ya comprada: la nota dice COMPRADO/CONFIRMADO, o hay una reserva marcada de ese día cuyo nombre aparece en la actividad */
+function actBought(a,note,date){if(/\b(COMPRAD[OA]S?|CONFIRMAD[OA]S?)\b/.test(note||""))return true;if(!date)return false;
+  var t=plain(a).toLowerCase();return (state.bookings||[]).some(function(b){if(!b.done||b.date!==date||!b.title)return false;
+    var key=b.title.split(/\s·\s|\s\(|,/)[0].trim().toLowerCase();return key.length>=6&&!/^(vuelo|airbnb|cancelada)/.test(key)&&t.indexOf(key)>=0;});}
+function actHtml(a,date){var m=/\s·\s(Reserva obligatoria|Reserva recomendada|Sin reserva)(?::\s*(.*))?$/.exec(a);
   if(!m)return '<li>'+rich(esc(a))+'</li>';
   var k=m[1]==="Reserva obligatoria"?"ob":m[1]==="Reserva recomendada"?"rc":"sr";
+  if(k!=="sr"&&actBought(a.slice(0,m.index),m[2],date))return '<li>'+rich(esc(a.slice(0,m.index)))+'<br><span class="rsv okc" title="Ya comprada">✓ '+esc(m[1])+' · comprada</span>'+(m[2]?' <small class="rsv-n">'+rich(esc(m[2]))+'</small>':"")+'</li>';
   return '<li>'+rich(esc(a.slice(0,m.index)))+'<br><span class="rsv '+k+'">'+esc(m[1])+'</span>'+(m[2]?' <small class="rsv-n">'+rich(esc(m[2]))+'</small>':"")+'</li>';}
 /* Franja de inicio fija y angosta; las demás, proporcionales al tiempo en cada ciudad */
 function bandsHtml(sg){var FIRST=12,rest=sg.slice(1),tot=rest.reduce(function(a,x){return a+Math.max(x.min,45);},0),h='<span class="bands" aria-hidden="true">',ic="",acc=0,lastIc=null,ics=[];
@@ -673,7 +678,7 @@ function sheetHtml(i){
   if(d.legs.length){h+='<h3>Trayectos</h3><div class="legs-d">';d.legs.forEach(function(l){
     h+='<div>'+(legIcon(l)?legIcon(l)+' ':"")+(l.from?esc(l.from):'<small>Origen sin definir</small>')+(l.dep?' <small>sale '+esc(l.dep)+'</small>':"")+' → '+(l.to?esc(l.to):'<small>destino sin definir</small>')+(l.arr?' <small>llega '+esc(l.arr)+'</small>':"")+'</div>';});h+='</div>';}
   var acts=d.activities.filter(function(a){return a&&a.trim();});
-  var items=mergeLegs(i,acts.map(actHtml));
+  var items=mergeLegs(i,acts.map(function(a){return actHtml(a,d.date);}));
   h+='<h3>Qué vamos a hacer</h3>'+(items.length?'<ul>'+items.join("")+'</ul>':'<p class="note">Sin planes todavía.</p>');
   if(!isTransit(d.sleep)||d.stay.name){
     h+='<h3>Alojamiento</h3>';
@@ -1071,5 +1076,5 @@ document.addEventListener("visibilitychange",function(){if(document.visibilitySt
 </body>
 </html>
 
-<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js?v=20261114190532").catch(function(){});});}</script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js?v=20261114190913").catch(function(){});});}</script>
 </body></html>
